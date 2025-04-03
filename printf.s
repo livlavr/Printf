@@ -130,9 +130,9 @@ print:
     ;        arg6       ;
     ;===================;
     ;    return code    ;
-    ;===================; <---------- %RBP
-    ;        %RBP       ;
     ;===================;
+    ;        %RBP       ;
+    ;===================; <---------- %RBP
     ;        arg5       ;
     ;===================;
     ;        arg4       ;
@@ -142,16 +142,17 @@ print:
     ;        arg2       ;
     ;===================;
     ;        arg1       ;
-    ;===================;
+    ;===================; <---------- %RBP + %R10
     ;        arg0       ;
     ;===================; <---------- %RSP
 
     pop rsi             ; rsi = &(format string)
     mov rdi, BUFFER     ; rdi = &(BUFFER)
+    mov r10, -40        ; r10 = argument shift
 
     call myPrint        ; After pushs I work by "cdecl calling convention"
 
-    add rsp, 40         ; clear Stack Frame
+    add rsp, 40         ; clean Stack Frame
     pop rbp             ; reset rbp
 
 .exit:
@@ -206,15 +207,16 @@ myPrint:
 ; Input:  none
 ; Output: none
 ;==============================================================|
-
 printBinary:
     mov bl, 'B'
-
     putCharInBuffer
     ret
 
 printSingleCharacter:
-    mov bl, 'C'
+    mov bl, byte [rbp + r10]
+
+    add r10, 8
+
     putCharInBuffer
     ret
 
@@ -249,7 +251,13 @@ printPercent:
     ret
 
 undefinedFormatSpecifier:
-    mov bl, '-'
+    mov bl, '%'
+    putCharInBuffer
+
+    prepareForTheNextCharacter
+    dec rsi
+
+    mov bl, byte [rsi]
     putCharInBuffer
     ret
 
@@ -258,6 +266,7 @@ undefinedFormatSpecifier:
 ;==============================================================|
 section .data
 BUFFER_LEN:         dw 8
+NUMBER_BUFFER_LEN:  dw 8
 ARGUMENTS_SHIFT:    db 0
 FUNCTIONS_TABLE:
     dq undefinedFormatSpecifier         ;%a
@@ -294,13 +303,9 @@ FUNCTIONS_TABLE:
 
     dq printUnsignedHex                 ;%x
 
-    ;dq printPercent                     ;%% - обрабатывать отдельно, как и заглавные спецификаторы
-    ;dq undefinedFormatSpecifier         ;%? - should print "%?"
-
 ;==============================================================|
 ; BSS SECTION
 ;==============================================================|
 section .bss
-BUFFER:             resb 256
-
-; TODO color
+BUFFER:             resb 8
+NUMBER_BUFFER:      resb 8
