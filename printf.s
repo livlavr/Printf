@@ -23,7 +23,8 @@ section .text
     shl bl, 3
     mov bl, bl
 
-    call [FUNCTIONS_TABLE + rbx]
+    ; call [FUNCTIONS_TABLE + rbx]
+    call printCharacterString
     jmp %%exit
 
 %%percentSpecifier:
@@ -218,6 +219,12 @@ myPrint:
     cmp byte [rsi], 0   ; Check if symbol isn't end of line
     je .exit
 
+    cmp r10, 0
+    jne .continue
+
+    ; mov r10, 16
+
+.continue:
     mov bl, byte [rsi]  ; bl = character to print || specifier
     cmp bl, '%'
     je .processFormatSpecifier
@@ -235,8 +242,6 @@ myPrint:
     je .exit
 
     chooseFormatSpecifierHandler
-
-    prepareForTheNextCharacter
 
     jmp .printNextCharacter
 
@@ -262,6 +267,9 @@ printBinary:
 
     pop rcx             ; reset rcx value
 
+    prepareForTheNextCharacter
+    dec rax
+
     ret
 
 ;%c============================================================|
@@ -270,12 +278,27 @@ printSingleCharacter:
     add r10, 8
 
     putCharInBuffer
+    prepareForTheNextCharacter
+
     ret
 
 ;%d============================================================|
 printSignedInteger:
-    mov bl, 'D'
-    putCharInBuffer
+    getDigitAndNumeralSystem 10, 10
+
+    mov rcx, 10
+    push rdx
+    xor rdx, rdx
+    call printDecimalNumeralSystem
+
+    pop rdx
+    pop rcx             ; rcx = rax ~ number of already printed characters
+    add rax, rcx        ; eax = number of printed characters + printed digits
+    pop rcx             ; reset rcx value
+
+    prepareForTheNextCharacter
+    dec rax
+
     ret
 
 ;%o============================================================|
@@ -288,6 +311,9 @@ printUnsignedOctal:
     add rax, rcx        ; eax = number of printed characters + printed digits
 
     pop rcx             ; reset rcx value
+
+    prepareForTheNextCharacter
+    dec rax
 
     ret
 
@@ -304,7 +330,6 @@ printCharacterString:
 .while:
     mov bl, [r14 + r13]
     putCharInBuffer
-
     prepareForTheNextCharacter
     dec rsi
 
@@ -314,15 +339,32 @@ printCharacterString:
     jne .while
 
 .exit:
+    dec rax
     pop rbx
     pop r13
     pop r14
+
+    prepareForTheNextCharacter
+    dec rax
+
     ret
 
 ;%u============================================================|
 printUnsignedDecimal:
-    mov bl, 'U'
-    putCharInBuffer
+    getDigitAndNumeralSystem 10, 10
+
+    mov rcx, 10
+    push rdx
+    xor rdx, rdx
+    call printDecimalNumeralSystem
+
+    pop rdx
+    pop rcx             ; rcx = rax ~ number of already printed characters
+    add rax, rcx        ; eax = number of printed characters + printed digits
+    pop rcx             ; reset rcx value
+
+    prepareForTheNextCharacter
+    dec rax
 
     ret
 
@@ -336,6 +378,9 @@ printUnsignedHex:
     add rax, rcx        ; eax = number of printed characters + printed digits
 
     pop rcx             ; reset rcx value
+
+    prepareForTheNextCharacter
+    dec rax
 
     ret
 
@@ -363,7 +408,7 @@ undefinedFormatSpecifier:
 ; Print Bin/Oct/Hex numeral system digits
 ; Input:  rax - Digit
 ;         ch - 1/7/15 (mask)
-;         cl - 1/3/4  (base of numerical system)
+;         cl - 1/3/4  (base of numerical system = 2^cl)
 ;         rbx - broken
 ; Output: rax - Number of printed digits
 ;==============================================================|
@@ -409,6 +454,79 @@ printBinOctHexNumeralSystem:
     dec r8
     pop rax             ; rax = r13 ~ number of printed digits
 
+    pop r13
+    pop rbx
+
+    ret
+
+;==============================================================|
+; Print Decimal numeral system digits
+; Input:  rax - Digit
+;         rbx - broken (fixed)
+;         rdx - broken (fixed)
+;         cl  = 10
+; Output: rax - Number of printed digits
+;==============================================================|
+printDecimalNumeralSystem:
+    push rbx
+    xor rbx, rbx
+
+    push r13
+    xor r13, r13
+
+    push rax
+    cmp rax, 0
+    jge .positiveInteger
+
+    neg rax
+    mov bl, '-'
+    putCharInBuffer
+    prepareForTheNextCharacter
+    dec rsi
+    dec rax
+
+.positiveInteger:
+    mov rbx, rax
+    div rcx
+
+.loop:
+	add dl, 48	        ; add ascii code of "0"
+
+.insert_byte:
+	mov [NUMBER_BUFFER + r13], dl
+	inc r13
+
+    xor rdx, rdx
+
+    mov rbx, rax
+	div rcx             ; shift to the next digit
+
+	test edx, edx	    ; loop requirement
+	jnz .loop
+
+    push r13
+    dec r13
+
+.printToBuffer:
+    mov bl, byte [NUMBER_BUFFER + r13]
+    dec r13
+    mov byte [rdi + r8], bl
+    prepareForTheNextCharacter
+    dec rsi
+
+    cmp r13, 0
+    jge .printToBuffer
+
+.exit:
+    dec r8
+
+    pop rax             ; rax = r13 ~ number of printed digits
+    pop r13             ; r13 = rax (input digit)
+    cmp r13, 0
+    jge .dontPrintMinus
+    add rax, 1
+
+.dontPrintMinus:
     pop r13
     pop rbx
 
@@ -461,5 +579,5 @@ FUNCTIONS_TABLE:
 ; BSS SECTION
 ;==============================================================|
 section .bss
-BUFFER:             resb 8
 NUMBER_BUFFER:      resb 32
+BUFFER:             resb 8
