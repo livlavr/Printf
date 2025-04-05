@@ -24,7 +24,7 @@ section .text
     mov bl, bl
 
     call [FUNCTIONS_TABLE + rbx]
-    ; call printSignedInteger
+    ; call printCharacterString
     jmp %%exit
 
 %%percentSpecifier:
@@ -219,12 +219,12 @@ myPrint:
     cmp byte [rsi], 0   ; Check if symbol isn't end of line
     je .exit
 
-    ; cmp r10, 0
-    ; jne .continue
+    cmp r10, 0
+    jne .continue
 
-    ; mov r10, 16
+    mov r10, 16
 
-; .continue:
+.continue:
     mov bl, byte [rsi]  ; bl = character to print || specifier
     cmp bl, '%'
     je .processFormatSpecifier
@@ -336,7 +336,7 @@ printCharacterString:
     inc r13
 
     cmp bl, 0
-    jg .while
+    jne .while
 
 .exit:
     pop rbx
@@ -345,6 +345,7 @@ printCharacterString:
 
     prepareForTheNextCharacter
     dec rax
+    dec r8
 
     ret
 
