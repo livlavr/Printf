@@ -23,8 +23,8 @@ section .text
     shl bl, 3
     mov bl, bl
 
-    ; call [FUNCTIONS_TABLE + rbx]
-    call printCharacterString
+    call [FUNCTIONS_TABLE + rbx]
+    ; call printSignedInteger
     jmp %%exit
 
 %%percentSpecifier:
@@ -219,12 +219,12 @@ myPrint:
     cmp byte [rsi], 0   ; Check if symbol isn't end of line
     je .exit
 
-    cmp r10, 0
-    jne .continue
+    ; cmp r10, 0
+    ; jne .continue
 
     ; mov r10, 16
 
-.continue:
+; .continue:
     mov bl, byte [rsi]  ; bl = character to print || specifier
     cmp bl, '%'
     je .processFormatSpecifier
@@ -336,10 +336,9 @@ printCharacterString:
     inc r13
 
     cmp bl, 0
-    jne .while
+    jg .while
 
 .exit:
-    dec rax
     pop rbx
     pop r13
     pop r14
@@ -388,6 +387,7 @@ printUnsignedHex:
 printPercent:
     mov bl, '%'
     putCharInBuffer
+    prepareForTheNextCharacter
 
     ret
 
@@ -395,7 +395,6 @@ printPercent:
 undefinedFormatSpecifier:
     mov bl, '%'
     putCharInBuffer
-
     prepareForTheNextCharacter
     dec rsi
 
@@ -502,6 +501,8 @@ printDecimalNumeralSystem:
 	div rcx             ; shift to the next digit
 
 	test edx, edx	    ; loop requirement
+	jnz .loop
+    test eax, eax
 	jnz .loop
 
     push r13
