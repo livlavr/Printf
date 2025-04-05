@@ -1,8 +1,11 @@
 global print
 
-;==============================================================|
-; TEXT SECTION
-;==============================================================|
+;================================================================================|
+;================================================================================|
+;                                      MACRO                                     |
+;================================================================================|
+;================================================================================|
+
 section .text
 ; =============================================================|
 ; Jumps to the handler function, depending on the specifier
@@ -10,7 +13,6 @@ section .text
 ; Output: stdout
 ;==============================================================|
 %macro chooseFormatSpecifierHandler 0
-
     cmp bl, 'x'         ; if bl > 'x' ---> percentSpecifier or undefined
     jg %%percentSpecifier
 
@@ -35,7 +37,6 @@ section .text
     call undefinedFormatSpecifier
 
 %%exit:
-
 %endmacro
 
 ; =============================================================|
@@ -44,11 +45,12 @@ section .text
 ; Output: stdout
 ;==============================================================|
 %macro printBuffer 0
-
     push rsi            ; Save registers values
     push rdx            ;
     push rdi            ;
     push rax            ;
+    push rcx
+    push r11
 
     mov rax, 1          ; "write" syscall index
     mov rdi, 1          ; stdout
@@ -56,11 +58,12 @@ section .text
     mov rdx, r8         ; strlen
     syscall             ; remember that it brokes rcx and r11
 
+    pop r11
+    pop rcx
     pop rax
     pop rdi
     pop rdx
     pop rsi
-
 %endmacro
 
 ; =============================================================|
@@ -71,9 +74,7 @@ section .text
 ; Output: none
 ;==============================================================|
 %macro putCharInBuffer 0
-
     mov [rdi + r8], bl
-
 %endmacro
 
 ; =============================================================|
@@ -82,10 +83,28 @@ section .text
 ; Output: none
 ;==============================================================|
 %macro flushBuffer 0
-
     printBuffer
     xor r8, r8
+%endmacro
 
+; =============================================================|
+; Flush numbers buffer when it about to overflow
+; Input:  none
+; Output: none
+;==============================================================|
+%macro CleanNumbersBuffer 0
+    push rsi
+
+    mov rsi, qword [NUMBER_BUFFER_LEN]
+    dec rsi
+
+%%while:
+    mov byte [NUMBER_BUFFER + rsi], 0
+    dec rsi
+    cmp rsi, 0
+    jge %%while
+
+    pop rsi
 %endmacro
 
 ; =============================================================|
@@ -94,19 +113,43 @@ section .text
 ; Output: none
 ;==============================================================|
 %macro prepareForTheNextCharacter 0
-
     inc r8              ; BUFFER shift
     inc rsi             ; Format string counter
     inc eax             ; Function return value counter
 
-    cmp r8, [BUFFER_LEN]
+    cmp r8, qword [BUFFER_LEN]
     jne %%exit
 
     flushBuffer         ; if buffer about to overflow -> flush it
 
 %%exit:
-
 %endmacro
+
+; =============================================================|
+; Get Digit and numerical system base (Anti-copypaste macros)
+; Input:  none
+; Output: cl - base, ch - mask
+;==============================================================|
+%macro getDigitAndNumeralSystem 2
+    push rcx
+    xor rcx, rcx
+
+    push rax
+
+    movsx rax, dword [rbp + r10]
+    add r10, 8
+
+    mov cl, %1
+    mov ch, %2
+
+%%exit:
+%endmacro
+
+;================================================================================|
+;================================================================================|
+;                                   FUNCTIONS                                    |
+;================================================================================|
+;================================================================================|
 
 ;==============================================================|
 ; MyPrint wrap - handles input arguments
@@ -163,6 +206,7 @@ print:
 ; Char printing function
 ; Input:  %rsi = &(format string)
 ;         %rdi = &(BUFFER)
+;         %bl  = character
 ; Output: %eax = number of printed characters eax
 ;==============================================================|
 myPrint:
@@ -207,49 +251,102 @@ myPrint:
 ; Input:  none
 ; Output: none
 ;==============================================================|
+;%b============================================================|
 printBinary:
-    mov bl, 'B'
-    putCharInBuffer
+    getDigitAndNumeralSystem 1, 1
+
+    call printBinOctHexNumeralSystem
+
+    pop rcx             ; rcx = rax ~ number of already printed characters
+    add rax, rcx        ; eax = number of printed characters + printed digits
+
+    pop rcx             ; reset rcx value
+
     ret
 
+;%c============================================================|
 printSingleCharacter:
     mov bl, byte [rbp + r10]
-
     add r10, 8
 
     putCharInBuffer
     ret
 
+;%d============================================================|
 printSignedInteger:
     mov bl, 'D'
     putCharInBuffer
     ret
 
+;%o============================================================|
 printUnsignedOctal:
-    mov bl, 'O'
-    putCharInBuffer
+    getDigitAndNumeralSystem 3, 7
+
+    call printBinOctHexNumeralSystem
+
+    pop rcx             ; rcx = rax ~ number of already printed characters
+    add rax, rcx        ; eax = number of printed characters + printed digits
+
+    pop rcx             ; reset rcx value
+
     ret
 
+;%s============================================================|
 printCharacterString:
-    mov bl, 'S'
+    push r14
+    mov r14, qword [rbp + r10]
+    add r10, 8
+
+    push r13
+    xor r13, r13
+    push rbx
+
+.while:
+    mov bl, [r14 + r13]
     putCharInBuffer
+
+    prepareForTheNextCharacter
+    dec rsi
+
+    inc r13
+
+    cmp bl, 0
+    jne .while
+
+.exit:
+    pop rbx
+    pop r13
+    pop r14
     ret
 
+;%u============================================================|
 printUnsignedDecimal:
     mov bl, 'U'
     putCharInBuffer
+
     ret
 
+;%h============================================================|
 printUnsignedHex:
-    mov bl, 'X'
-    putCharInBuffer
+    getDigitAndNumeralSystem 4, 15
+
+    call printBinOctHexNumeralSystem
+
+    pop rcx             ; rcx = rax ~ number of already printed characters
+    add rax, rcx        ; eax = number of printed characters + printed digits
+
+    pop rcx             ; reset rcx value
+
     ret
 
+;%%============================================================|
 printPercent:
     mov bl, '%'
     putCharInBuffer
+
     ret
 
+;%?============================================================|
 undefinedFormatSpecifier:
     mov bl, '%'
     putCharInBuffer
@@ -259,15 +356,72 @@ undefinedFormatSpecifier:
 
     mov bl, byte [rsi]
     putCharInBuffer
+
     ret
 
 ;==============================================================|
-; DATA SECTION
+; Print Bin/Oct/Hex numeral system digits
+; Input:  rax - Digit
+;         ch - 1/7/15 (mask)
+;         cl - 1/3/4  (base of numerical system)
+;         rbx - broken
+; Output: rax - Number of printed digits
 ;==============================================================|
+printBinOctHexNumeralSystem:
+    push rbx
+    xor rbx, rbx
+
+    push r13
+    xor r13, r13
+
+.loop:
+	mov bl, al
+	and bl, ch          ; Get only one digit with mask
+	add bl, 48	        ; add ascii code of "0"
+
+	cmp bl, 57          ; check if it's letter symbol (10-16)
+	jle .insert_byte
+	add bl, 39	        ; add ascii code of "a"
+
+.insert_byte:
+	mov [NUMBER_BUFFER + r13], bl
+	inc r13
+
+	shr eax, cl	        ; shift to the next digit
+
+	test eax, eax	    ; loop requirement
+	jnz .loop
+
+    push r13
+    dec r13
+
+.printToBuffer:
+    mov bl, byte [NUMBER_BUFFER + r13]
+    dec r13
+    mov byte [rdi + r8], bl
+    prepareForTheNextCharacter
+    dec rsi
+
+    cmp r13, 0
+    jge .printToBuffer
+
+.exit:
+    dec r8
+    pop rax             ; rax = r13 ~ number of printed digits
+
+    pop r13
+    pop rbx
+
+    ret
+
+;================================================================================|
+;================================================================================|
+;                                      DATA                                      |
+;================================================================================|
+;================================================================================|
 section .data
-BUFFER_LEN:         dw 8
-NUMBER_BUFFER_LEN:  dw 8
-ARGUMENTS_SHIFT:    db 0
+BUFFER_LEN:         dq 8
+NUMBER_BUFFER_LEN:  dq 32
 FUNCTIONS_TABLE:
     dq undefinedFormatSpecifier         ;%a
 
@@ -308,4 +462,4 @@ FUNCTIONS_TABLE:
 ;==============================================================|
 section .bss
 BUFFER:             resb 8
-NUMBER_BUFFER:      resb 8
+NUMBER_BUFFER:      resb 32
