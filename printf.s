@@ -543,39 +543,25 @@ section .data
 BUFFER_LEN:         dq 8
 NUMBER_BUFFER_LEN:  dq 32
 FUNCTIONS_TABLE:
-    dq undefinedFormatSpecifier         ;%a
+    dq undefinedFormatSpecifier          ;%a
 
-    dq printBinary                      ;%b
-    dq printSingleCharacter             ;%c
-    dq printSignedInteger               ;%d
+    dq printBinary                       ;%b
+    dq printSingleCharacter              ;%c
+    dq printSignedInteger                ;%d
 
-    dq undefinedFormatSpecifier         ;%e
-    dq undefinedFormatSpecifier         ;%f
-    dq undefinedFormatSpecifier         ;%g
-    dq undefinedFormatSpecifier         ;%h
-    dq undefinedFormatSpecifier         ;%i
-    dq undefinedFormatSpecifier         ;%j
-    dq undefinedFormatSpecifier         ;%k
-    dq undefinedFormatSpecifier         ;%l
-    dq undefinedFormatSpecifier         ;%m
-    dq undefinedFormatSpecifier         ;%n
+    times 10 dq undefinedFormatSpecifier ;%e;%f;%g;%h;%i;%j;%k;%l;%m;%n
 
-    dq printUnsignedOctal               ;%o
+    dq printUnsignedOctal                ;%o
 
-    dq undefinedFormatSpecifier         ;%p
-    dq undefinedFormatSpecifier         ;%q
-    dq undefinedFormatSpecifier         ;%r
+    times 3 dq undefinedFormatSpecifier  ;%p;%q;%r
 
-    dq printCharacterString             ;%s
+    dq printCharacterString              ;%s
+    dq undefinedFormatSpecifier          ;%t
+    dq printUnsignedDecimal              ;%u
 
-    dq undefinedFormatSpecifier         ;%t
+    times 2 dq undefinedFormatSpecifier  ;%v;%w
 
-    dq printUnsignedDecimal             ;%u
-
-    dq undefinedFormatSpecifier         ;%v
-    dq undefinedFormatSpecifier         ;%w
-
-    dq printUnsignedHex                 ;%x
+    dq printUnsignedHex                  ;%x
 
 ;==============================================================|
 ; BSS SECTION
