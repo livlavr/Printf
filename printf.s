@@ -216,7 +216,7 @@ myPrint:
     xor rax, rax
 
 .printNextCharacter:
-    cmp byte [rsi], 0   ; Check if symbol isn't end of line
+    cmp byte [rsi], 0                    ; Check if symbol isn't end of line
     je .exit
 
     cmp r10, 0
@@ -225,11 +225,11 @@ myPrint:
     mov r10, 16
 
 .continue:
-    mov bl, byte [rsi]  ; bl = character to print || specifier
+    mov bl, byte [rsi]                   ; bl = character to print || specifier
     cmp bl, '%'
     je .processFormatSpecifier
 
-    putCharInBuffer     ; put character in BUFFER macros
+    putCharInBuffer                      ; put character in BUFFER macros
 
     prepareForTheNextCharacter
 
@@ -237,8 +237,8 @@ myPrint:
 
 .processFormatSpecifier:
     inc rsi
-    mov bl, byte [rsi]  ; bl = specifier
-    cmp bl, 0           ; Check if symbol isn't end of line
+    mov bl, byte [rsi]                   ; bl = specifier
+    cmp bl, 0                            ; Check if symbol isn't end of line
     je .exit
 
     chooseFormatSpecifierHandler
@@ -262,10 +262,10 @@ printBinary:
 
     call printBinOctHexNumeralSystem
 
-    pop rcx             ; rcx = rax ~ number of already printed characters
-    add rax, rcx        ; eax = number of printed characters + printed digits
+    pop rcx                              ; rcx = rax ~ number of already printed characters
+    add rax, rcx                         ; eax = number of printed characters + printed digits
 
-    pop rcx             ; reset rcx value
+    pop rcx                              ; reset rcx value
 
     prepareForTheNextCharacter
     dec rax
@@ -292,9 +292,9 @@ printSignedInteger:
     call printDecimalNumeralSystem
 
     pop rdx
-    pop rcx             ; rcx = rax ~ number of already printed characters
-    add rax, rcx        ; eax = number of printed characters + printed digits
-    pop rcx             ; reset rcx value
+    pop rcx                              ; rcx = rax ~ number of already printed characters
+    add rax, rcx                         ; eax = number of printed characters + printed digits
+    pop rcx                              ; reset rcx value
 
     prepareForTheNextCharacter
     dec rax
@@ -307,10 +307,10 @@ printUnsignedOctal:
 
     call printBinOctHexNumeralSystem
 
-    pop rcx             ; rcx = rax ~ number of already printed characters
-    add rax, rcx        ; eax = number of printed characters + printed digits
+    pop rcx                              ; rcx = rax ~ number of already printed characters
+    add rax, rcx                         ; eax = number of printed characters + printed digits
 
-    pop rcx             ; reset rcx value
+    pop rcx                              ; reset rcx value
 
     prepareForTheNextCharacter
     dec rax
@@ -359,9 +359,9 @@ printUnsignedDecimal:
     call printDecimalNumeralSystem
 
     pop rdx
-    pop rcx             ; rcx = rax ~ number of already printed characters
-    add rax, rcx        ; eax = number of printed characters + printed digits
-    pop rcx             ; reset rcx value
+    pop rcx                              ; rcx = rax ~ number of already printed characters
+    add rax, rcx                         ; eax = number of printed characters + printed digits
+    pop rcx                              ; reset rcx value
 
     prepareForTheNextCharacter
     dec rax
@@ -374,10 +374,10 @@ printUnsignedHex:
 
     call printBinOctHexNumeralSystem
 
-    pop rcx             ; rcx = rax ~ number of already printed characters
-    add rax, rcx        ; eax = number of printed characters + printed digits
+    pop rcx                              ; rcx = rax ~ number of already printed characters
+    add rax, rcx                         ; eax = number of printed characters + printed digits
 
-    pop rcx             ; reset rcx value
+    pop rcx                              ; reset rcx value
 
     prepareForTheNextCharacter
     dec rax
@@ -421,20 +421,20 @@ printBinOctHexNumeralSystem:
 
 .loop:
 	mov bl, al
-	and bl, ch          ; Get only one digit with mask
-	add bl, 48	        ; add ascii code of "0"
+	and bl, ch                           ; Get only one digit with mask
+	add bl, 48	                         ; add ascii code of "0"
 
-	cmp bl, 57          ; check if it's letter symbol (10-16)
+	cmp bl, 57                           ; check if it's letter symbol (10-16)
 	jle .insert_byte
-	add bl, 39	        ; add ascii code of "a"
+	add bl, 39	                         ; add ascii code of "a"
 
 .insert_byte:
 	mov [NUMBER_BUFFER + r13], bl
 	inc r13
 
-	shr eax, cl	        ; shift to the next digit
+	shr eax, cl	                         ; shift to the next digit
 
-	test eax, eax	    ; loop requirement
+	test eax, eax	                     ; loop requirement
 	jnz .loop
 
     push r13
@@ -452,7 +452,7 @@ printBinOctHexNumeralSystem:
 
 .exit:
     dec r8
-    pop rax             ; rax = r13 ~ number of printed digits
+    pop rax                              ; rax = r13 ~ number of printed digits
 
     pop r13
     pop rbx
@@ -490,7 +490,7 @@ printDecimalNumeralSystem:
     div rcx
 
 .loop:
-	add dl, 48	        ; add ascii code of "0"
+	add dl, 48	                         ; add ascii code of "0"
 
 .insert_byte:
 	mov [NUMBER_BUFFER + r13], dl
@@ -499,9 +499,9 @@ printDecimalNumeralSystem:
     xor rdx, rdx
 
     mov rbx, rax
-	div rcx             ; shift to the next digit
+	div rcx                              ; shift to the next digit
 
-	test edx, edx	    ; loop requirement
+	test edx, edx	                     ; loop requirement
 	jnz .loop
     test eax, eax
 	jnz .loop
@@ -522,8 +522,8 @@ printDecimalNumeralSystem:
 .exit:
     dec r8
 
-    pop rax             ; rax = r13 ~ number of printed digits
-    pop r13             ; r13 = rax (input digit)
+    pop rax                              ; rax = r13 ~ number of printed digits
+    pop r13                              ; r13 = rax (input digit)
     cmp r13, 0
     jge .dontPrintMinus
     add rax, 1
